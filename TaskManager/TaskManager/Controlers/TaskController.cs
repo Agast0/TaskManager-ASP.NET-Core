@@ -15,8 +15,8 @@ namespace TaskManager.Controlers
             _context = context;
         }
 
-        [HttpGet]
-        public ActionResult<Models.Task> GetTask(int id)
+        [HttpGet("/get/{id}")]
+        public ActionResult<Models.Task> GetTask([FromRoute] int id)
         {
             var task = _context.Task.Find(id);
             if (task == null)
@@ -26,16 +26,64 @@ namespace TaskManager.Controlers
             return Ok(task);
         }
 
-        [HttpPost]
+        [HttpGet("/get")]
+        public ActionResult<IEnumerable<Models.Task>> GetAllTasks()
+        {
+            var tasks = _context.Task.ToList();
+            return Ok(tasks);
+        }
+
+        [HttpPost("/create")]
         public ActionResult<Models.Task> CreateTask(Models.Task task)
         {
-            if (task == null)
+            if (!ModelState.IsValid)
             {
-                return BadRequest();
+                return BadRequest(ModelState);
             }
+
             _context.Task.Add(task);
             _context.SaveChanges();
-            return CreatedAtAction(nameof(GetTask), new { id =  task.Id }, task);
+            return CreatedAtAction(nameof(GetTask), new { id = task.Id }, task);
+        }
+
+        [HttpPut("/update/{id}")]
+        public ActionResult<Models.Task> UpdateTask(int id, Models.Task updatedTask)
+        {
+            var existingTask = _context.Task.Find(id);
+            if (existingTask == null)
+            {
+                return NotFound();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            existingTask.Title = updatedTask.Title;
+            existingTask.Description = updatedTask.Description;
+            existingTask.DueDate = updatedTask.DueDate;
+            existingTask.IsCompleted = updatedTask.IsCompleted;
+
+            _context.Task.Update(existingTask);
+            _context.SaveChanges();
+
+            return Ok(existingTask);
+        }
+
+        [HttpDelete("/delete/{id}")]
+        public ActionResult DeleteTask(int id)
+        {
+            var existingTask = _context.Task.Find(id);
+            if (existingTask == null)
+            {
+                return NotFound();
+            }
+
+            _context.Task.Remove(existingTask);
+            _context.SaveChanges();
+
+            return Ok();
         }
     }
 }

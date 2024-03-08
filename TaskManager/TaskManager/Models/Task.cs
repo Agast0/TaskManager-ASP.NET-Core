@@ -12,7 +12,7 @@ namespace TaskManager.Models
         [Required]
         public string Description { get; set; }
         [Required]
-        public DateTime DueDate { get; set; }
+        public DateTime? DueDate { get; set; }
         [Required]
         public bool IsCompleted { get; set; }
     }
