@@ -2,11 +2,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using TaskManager.Data;
+using Microsoft.AspNetCore.Authorization;
+using TaskManager.DTOs;
+using System.Security.Claims;
 
 namespace TaskManager.Controlers
 {
     [Route("/[controller]")]
     [ApiController]
+    [Authorize]
     public class TaskController : ControllerBase
     {
         private readonly ApiContext _context;
@@ -16,7 +20,8 @@ namespace TaskManager.Controlers
         }
 
         [HttpGet("/get/{id}")]
-        public ActionResult<Models.Task> GetTask([FromRoute] int id)
+        [AllowAnonymous]
+        public ActionResult<TaskDTO> GetTask([FromRoute] int id)
         {
             var task = _context.Task.Find(id);
             if (task == null)
@@ -27,6 +32,7 @@ namespace TaskManager.Controlers
         }
 
         [HttpGet("/get")]
+        [AllowAnonymous]
         public ActionResult<IEnumerable<Models.Task>> GetAllTasks()
         {
             var tasks = _context.Task.ToList();
@@ -34,12 +40,23 @@ namespace TaskManager.Controlers
         }
 
         [HttpPost("/create")]
-        public ActionResult<Models.Task> CreateTask(Models.Task task)
+        public ActionResult<Models.Task> CreateTask(TaskDTO taskDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            var task = new Models.Task
+            {
+                Title = taskDto.Title,
+                Description = taskDto.Description,
+                DueDate = taskDto.DueDate,
+                IsCompleted = taskDto.IsCompleted,
+                Username = username
+            };
 
             _context.Task.Add(task);
             _context.SaveChanges();
@@ -47,7 +64,7 @@ namespace TaskManager.Controlers
         }
 
         [HttpPut("/update/{id}")]
-        public ActionResult<Models.Task> UpdateTask(int id, Models.Task updatedTask)
+        public ActionResult<Models.Task> UpdateTask(int id, TaskDTO taskDTO)
         {
             var existingTask = _context.Task.Find(id);
             if (existingTask == null)
@@ -60,10 +77,17 @@ namespace TaskManager.Controlers
                 return BadRequest(ModelState);
             }
 
-            existingTask.Title = updatedTask.Title;
-            existingTask.Description = updatedTask.Description;
-            existingTask.DueDate = updatedTask.DueDate;
-            existingTask.IsCompleted = updatedTask.IsCompleted;
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (existingTask.Username != username)
+            {
+                return Unauthorized("You are not authorized to update this task.");
+            }
+
+            existingTask.Title = taskDTO.Title;
+            existingTask.Description = taskDTO.Description;
+            existingTask.DueDate = taskDTO.DueDate;
+            existingTask.IsCompleted = taskDTO.IsCompleted;
 
             _context.Task.Update(existingTask);
             _context.SaveChanges();
@@ -78,6 +102,13 @@ namespace TaskManager.Controlers
             if (existingTask == null)
             {
                 return NotFound();
+            }
+
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (existingTask.Username != username)
+            {
+                return Unauthorized("You are not authorized to delete this task.");
             }
 
             _context.Task.Remove(existingTask);

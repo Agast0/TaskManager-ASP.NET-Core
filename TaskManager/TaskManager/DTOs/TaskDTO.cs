@@ -1,10 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace TaskManager.Models
+namespace TaskManager.DTOs
 {
-    public class Task
+    public class TaskDTO
     {
-        [Key]
         public int Id { get; set; }
         [Required]
         [MaxLength(50)]
@@ -15,7 +14,5 @@ namespace TaskManager.Models
         public DateTime? DueDate { get; set; }
         [Required]
         public bool IsCompleted { get; set; }
-        [Required]
-        public string Username { get; set; }
     }
 }

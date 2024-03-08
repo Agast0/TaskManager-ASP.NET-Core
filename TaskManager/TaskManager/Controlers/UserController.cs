@@ -4,6 +4,12 @@ using TaskManager.Models;
 using TaskManager.DTOs;
 
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace TaskManager.Controlers
 {
@@ -12,9 +18,12 @@ namespace TaskManager.Controlers
     public class UserController : ControllerBase
     {
         private readonly ApiContext _context;
-        public UserController(ApiContext context)
+        private readonly IConfiguration _config;
+
+        public UserController(ApiContext context, IConfiguration configuration)
         {
             _context = context;
+            _config = configuration;
         }
 
         [HttpGet("/get/user/{username}")]
@@ -74,7 +83,24 @@ namespace TaskManager.Controlers
 
             if (existingUser.Password == hashedPassword)
             {
-                return Ok("Login successful");
+                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+                var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+                var claims = new[]
+                {
+                    new Claim(ClaimTypes.Name, user.Username),
+                };
+
+                var Sectoken = new JwtSecurityToken(
+                    _config["Jwt:Issuer"],
+                    _config["Jwt:Issuer"],
+                    claims: claims,
+                    expires: DateTime.Now.AddMinutes(120),
+                    signingCredentials: credentials);
+
+                var token = new JwtSecurityTokenHandler().WriteToken(Sectoken);
+
+                return Ok(token);
             }
             else
             {
@@ -99,7 +125,7 @@ namespace TaskManager.Controlers
 
         private string HashPassword(string password)
         {
-            string salt = "7buVtajQ0UjY6MedSXtwFisNugLPjYZZ";
+            string salt = _config["Crypto:SecretKey"];
             byte[] saltBytes = Convert.FromBase64String(salt);
             string hashedPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
                 password: password,
