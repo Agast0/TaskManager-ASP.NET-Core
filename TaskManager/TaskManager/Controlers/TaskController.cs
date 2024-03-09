@@ -39,6 +39,15 @@ namespace TaskManager.Controlers
             return Ok(tasks);
         }
 
+        [HttpGet("/getWithUsername/{username}")]
+        [AllowAnonymous]
+        public ActionResult<IEnumerable<Models.Task>> GetAllTasksWithUsername([FromRoute] string username)
+        {
+            var tasks = _context.Task.Where(t => t.Username == username).ToList();
+
+            return Ok(tasks);
+        }
+
         [HttpPost("/create")]
         public ActionResult<Models.Task> CreateTask(TaskDTO taskDto)
         {

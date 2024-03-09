@@ -109,13 +109,24 @@ namespace TaskManager.Controlers
         }
 
         [HttpDelete("/user/delete/{username}")]
-        public ActionResult DeleteTask(string username)
+        [Authorize]
+        public ActionResult DeleteUser(string username)
         {
             var existingUser = _context.Users.Find(username);
             if (existingUser == null)
             {
                 return NotFound();
             }
+
+            var JwtUsername = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (existingUser.Username != JwtUsername)
+            {
+                return Unauthorized("You are not authorized to delete this user.");
+            }
+
+            var userTasks = _context.Task.Where(t => t.Username == username);
+            _context.Task.RemoveRange(userTasks);
 
             _context.Users.Remove(existingUser);
             _context.SaveChanges();
